@@ -19,5 +19,12 @@ CHIP Computer {
     IN reset;
 
     PARTS:
-    // Put your code here:
+    // first read PC output value and find the instruction address in ROM
+	ROM32K(address=PCoutput, out=instruction);
+	
+	//CPU to compute
+	CPU(inM=RAMoutM,instruction=instruction, reset=reset, outM=RAMinput, writeM=RAMload, addressM=RAMaddressM, pc=PCoutput);
+
+	// write result into memory(RAM)
+	Memory(in=RAMinput, load=RAMload, address=RAMaddressM, out=RAMoutM);
 }

@@ -39,5 +39,63 @@ CHIP CPU {
         pc[15];          // address of next instruction
 
     PARTS:
-    // Put your code here:
+    // fitstly we decode the instruction and get its type
+    Not(in=instruction[15], out=Ainstr);
+    And(a=instruction[15], b=instruction[15], out=Cinstr);
+    
+    // use instruction[5] to determine whether should load A register with ALU output
+    And(a=Cinstr, b=instruction[5], out=ALUtoA);
+    Mux16(a=instruction, b=ALUoutput, sel=ALUtoA, out=inputA);
+    
+    // Should put outA into Aregister?
+    Or(a=Ainstr, b=ALUtoA, out=loadA);
+    ARegister(in=inputA, load=loadA, out=outA, out[0..14]=addressM);
+    
+    // use instruction[12](i.e. a-bit) to determine whether we use the A or M[A] 
+    // as operator.
+    Mux16(a=outA, b=inM, sel=instruction[12], out=AM);
+    
+    // use instruction[4] (if it is C-instruction) to determine: should load D-resister
+    // with the value of ALUoutput.
+    And(a=Cinstr, b=instruction[4], out=loadD);
+    DRegister(in=ALUoutput, load=loadD, out=D);
+    
+    // ALU uses A/M and D to compute, use instruction c1...c6 bits
+    ALU(x=D, y=AM, zx=instruction[11], nx=instruction[10], zy=instruction[9],
+    ny=instruction[8], f=instruction[7], no=instruction[6], out=ALUoutput, out=outM,
+    zr=zr, ng=ng);
+    
+    // Then we should tackle 'writeM', set it to 0 or 1 using C-instruction d3-bit
+    And(a=Cinstr, b=instruction[3], out=writeM);
+    
+    // Then we can tackle 'PC part' in CPU. Use the zr and ng from ALU output, we 
+    // determine whether jump or not
+    
+    //  if ALUoutput ==0 and j2 bit equals to 1, we should jump
+    And(a=zr, b=instruction[1], out=JEQ);
+    //  if ALUoutput<0 and j3 bit equals to 1, we should jump
+    And(a=ng, b=instruction[2], out=JLT);
+    // JLE = Or(JEQ, JLT)
+    Or(a=JEQ, b=JLT, out=JLE);
+    // get whether ALU output is greater than 0
+    Or(a=zr, b=ng, out=notpos);
+    Not(in=notpos, out=greaterThanZero);
+    // if ALUoutput>0 and j1 bit equals to 1, we should jump
+    And(a=greaterThanZero, b=instruction[0], out=JGT);
+    // JGE = Or(JEQ, JGT)
+    Or(a=JEQ, b=JGT, out=JGE);
+    // JNE = (!zr)&(j2==0)
+    Not(in=zr, out=notzr);
+    Not(in=instruction[1], out=notj1);
+    And(a=notzr, b=notj1, out=JNE);
+    // JUMP
+    Or(a=JLE, b=JGT, out=JUMP);
+    And(a=Cinstr, b=JUMP, out=loadPC);
+    // if not load, then Inc
+    Not(in=loadPC, out=IncPC);
+    
+    //finally we update PC 
+    PC(in=outA, inc=IncPC, load=loadPC, reset=reset, out[0..14]=pc);    
+    
+    // Job done! Such a huge project!
 }

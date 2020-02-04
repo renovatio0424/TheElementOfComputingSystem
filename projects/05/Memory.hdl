@@ -27,5 +27,29 @@ CHIP Memory {
     OUT out[16];
 
     PARTS:
-    // Put your code here:
+    // Memory consists of RAM16K, SCREEN and Keyboard, which is 16K, 8K, 1 respectively.
+	// Memory has 15-bit address space from 0-0x60000, Ram16K has 14-bit address space // from 0-0x3FFF, so if the 15th bit of memory address -- address[14] -- equals to
+	// 0, it denotes RAM16K. And if address[14]==1, it says the address is >= 0x4000,
+	// which is the address of screen and keyboard. 
+	// In same method, we know that if address[13]==0, we choose screen, and if address
+	// [13]==1, we choose KBD.
+	// *** Thus we have : choose RAM if address[13..14] == [0,0] or [0,1]
+	// ***                choose screen if address[13..14] == [1,0]
+	// ***                choose KBD if addrss[13..14] == [1,1]
+	
+	
+	// select between RAM16K and IO devices
+	DMux4Way(in=load, sel[0]=address[13], sel[1]=address[14], a=loadRAM16K1, b=loadRAM16K2, c=loadSCREEN, d=loadKBD);
+	
+	// RAM16K output
+	RAM16K(in=in, load=loadRAM16K1, address=address[0..13], out=outRAM16K1);
+	RAM16K(in=in, load=loadRAM16K2, address=address[0..13], out=outRAM16K2);
+
+	
+	// SCREEN and KBD outputs
+	Screen(in=in, load=loadSCREEN, address=address[0..12], out=outSCREEN);
+	Keyboard(out=outKBD);
+	
+	// select out from RAM16K and IO devices, if address[14]==1, we choose RAM
+	Mux4Way16(a=outRAM16K1, b=outRAM16K2, c=outSCREEN, d=outKBD, sel=address[13..14], out=out);
 }
