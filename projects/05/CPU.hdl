@@ -39,28 +39,27 @@ CHIP CPU {
         pc[15];          // address of next instruction
 
     PARTS:
-    // fitstly we decode the instruction and get its type
+    // 우선 16번째 비트값으로 a 명령어인지, b 명령어 인지 확인 (decode)
     Not(in=instruction[15], out=Ainstr);
     And(a=instruction[15], b=instruction[15], out=Cinstr);
     
-    // use instruction[5] to determine whether should load A register with ALU output
+    // 6번째 비트맵으로 A 레지스터에 ALU output 을 로드할지를 결정함
     And(a=Cinstr, b=instruction[5], out=ALUtoA);
     Mux16(a=instruction, b=ALUoutput, sel=ALUtoA, out=inputA);
     
-    // Should put outA into Aregister?
+    // outA를 A레지스터에 넣을것인지?
     Or(a=Ainstr, b=ALUtoA, out=loadA);
     ARegister(in=inputA, load=loadA, out=outA, out[0..14]=addressM);
     
-    // use instruction[12](i.e. a-bit) to determine whether we use the A or M[A] 
-    // as operator.
+    // a 비트 (13번째 비트) 를 사용해 A 또는 M[A]를 사용할지를 결정
+    // 연산자로서.
     Mux16(a=outA, b=inM, sel=instruction[12], out=AM);
     
-    // use instruction[4] (if it is C-instruction) to determine: should load D-resister
-    // with the value of ALUoutput.
+    // 만약 C 명령어라면 5번째 비트로 ALU 결과값을 D 레지스터를 로드함 
     And(a=Cinstr, b=instruction[4], out=loadD);
     DRegister(in=ALUoutput, load=loadD, out=D);
     
-    // ALU uses A/M and D to compute, use instruction c1...c6 bits
+    // ALU는 c1~c6 비트를 이용해 A 레지스터 또는 메모리, D레지스터를 연산함 
     ALU(x=D, y=AM, zx=instruction[11], nx=instruction[10], zy=instruction[9],
     ny=instruction[8], f=instruction[7], no=instruction[6], out=ALUoutput, out=outM,
     zr=zr, ng=ng);
