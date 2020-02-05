@@ -27,16 +27,16 @@
 
 CHIP CPU {
 
-    IN  inM[16],         // M value input  (M = contents of RAM[A])
-        instruction[16], // Instruction for execution
-        reset;           // Signals whether to re-start the current
-                         // program (reset==1) or continue executing
-                         // the current program (reset==0).
+    IN  inM[16],         // M 값 입력 (M = RAM[A] 의 내용)
+        instruction[16], // 실행을 위한 명령어
+        reset;           // 현재 프로그램을 재시작할지 (reset = 1)
+                         // 실행을 계속할지 (reset = 0)
+                         // 나타내는 신호.
 
-    OUT outM[16],        // M value output
-        writeM,          // Write to M? 
-        addressM[15],    // Address in data memory (of M)
-        pc[15];          // address of next instruction
+    OUT outM[16],        // M 값 출력
+        writeM,          // M 에 쓸지 여부 
+        addressM[15],    // 데이터 메모리에서 M의 주소
+        pc[15];          // 다음 명령어의 주소
 
     PARTS:
     // 우선 16번째 비트값으로 a 명령어인지, b 명령어 인지 확인 (decode)
@@ -64,22 +64,22 @@ CHIP CPU {
     ny=instruction[8], f=instruction[7], no=instruction[6], out=ALUoutput, out=outM,
     zr=zr, ng=ng);
     
-    // Then we should tackle 'writeM', set it to 0 or 1 using C-instruction d3-bit
+    // C 명령어의 d3 비트의 값을 M 에 저장할지 말지를 결정함
     And(a=Cinstr, b=instruction[3], out=writeM);
     
-    // Then we can tackle 'PC part' in CPU. Use the zr and ng from ALU output, we 
-    // determine whether jump or not
+    // 이때 우리는 CPU 에서 PC (프로그램 카운터) 를 다룰 수 있는데, 
+    // ALU 출력 값중 zr 과 ng 를 통해 jump를 할지 말지를 결정한다. 
     
-    //  if ALUoutput ==0 and j2 bit equals to 1, we should jump
+    // 만약 ALU output == 0 이고 j2 비트가 1 이라면, 우리는 점프해야한다. (JEQ)
     And(a=zr, b=instruction[1], out=JEQ);
-    //  if ALUoutput<0 and j3 bit equals to 1, we should jump
+    // 만약 ALU output < 0  이고 j3 비트가 1 이라면 우리는 점프해야한다. (JLT)
     And(a=ng, b=instruction[2], out=JLT);
     // JLE = Or(JEQ, JLT)
     Or(a=JEQ, b=JLT, out=JLE);
-    // get whether ALU output is greater than 0
+    // ALU output > 0 이라면
     Or(a=zr, b=ng, out=notpos);
     Not(in=notpos, out=greaterThanZero);
-    // if ALUoutput>0 and j1 bit equals to 1, we should jump
+    // 만약 ALU output > 0 이고 j1 비트 == 1 이라면, 우리는 점프해야한다 (JGT)
     And(a=greaterThanZero, b=instruction[0], out=JGT);
     // JGE = Or(JEQ, JGT)
     Or(a=JEQ, b=JGT, out=JGE);
@@ -90,11 +90,11 @@ CHIP CPU {
     // JUMP
     Or(a=JLE, b=JGT, out=JUMP);
     And(a=Cinstr, b=JUMP, out=loadPC);
-    // if not load, then Inc
+    // 만약 로드 안한다면 pc 값이 증가한다.
     Not(in=loadPC, out=IncPC);
     
-    //finally we update PC 
+    // 마침내 PC 를 업데이트한다.
     PC(in=outA, inc=IncPC, load=loadPC, reset=reset, out[0..14]=pc);    
     
-    // Job done! Such a huge project!
+    // 끝~~
 }
